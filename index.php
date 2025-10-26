@@ -2,6 +2,26 @@
 require __DIR__ . '/functions.php';
 ensure_data_file();
 $links = load_links();
+$activeCount = count($links);
+$latestUpdateTimestamp = null;
+
+foreach ($links as $link) {
+    $rawTimestamp = $link['updated_at'] ?? $link['created_at'] ?? null;
+    if ($rawTimestamp === null) {
+        continue;
+    }
+
+    $timestamp = strtotime($rawTimestamp);
+    if ($timestamp === false) {
+        continue;
+    }
+
+    if ($latestUpdateTimestamp === null || $timestamp > $latestUpdateTimestamp) {
+        $latestUpdateTimestamp = $timestamp;
+    }
+}
+
+$lastUpdatedLabel = $latestUpdateTimestamp ? date('Y/m/d', $latestUpdateTimestamp) : null;
 ?><!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -17,32 +37,67 @@ $links = load_links();
 <body class="public-page">
     <main class="container">
         <section class="profile">
-            <img src="assets/images/avatar-placeholder.svg" alt="آواتار" class="profile__avatar" loading="lazy">
-            <h1 class="profile__title">شبکه‌های من</h1>
-            <p class="profile__subtitle">برای مشاهده صفحات من روی دکمه‌ها کلیک کنید.</p>
+            <div class="profile__avatar-wrapper">
+                <img src="assets/images/avatar-placeholder.svg" alt="آواتار" class="profile__avatar" loading="lazy">
+            </div>
+            <div class="profile__info">
+                <h1 class="profile__title">شبکه‌های من</h1>
+                <p class="profile__subtitle">از طریق لینک‌های زیر می‌توانید من را در شبکه‌های اجتماعی و پروژه‌هایم دنبال کنید.</p>
+            </div>
+            <div class="profile__stats">
+                <div class="profile__stat">
+                    <span class="profile__stat-number"><?= htmlspecialchars((string) $activeCount, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span class="profile__stat-label">لینک فعال</span>
+                </div>
+                <?php if ($lastUpdatedLabel !== null): ?>
+                    <div class="profile__stat">
+                        <span class="profile__stat-number"><?= htmlspecialchars($lastUpdatedLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="profile__stat-label">آخرین بروزرسانی</span>
+                    </div>
+                <?php endif; ?>
+            </div>
         </section>
         <section class="links">
+            <header class="links__header">
+                <h2 class="links__title">همین حالا متصل شوید</h2>
+                <p class="links__description">برای مشاهده صفحات و شبکه‌های اجتماعی من روی دکمه‌های زیر کلیک کنید.</p>
+            </header>
             <?php if (empty($links)): ?>
-                <p class="links__empty">هنوز لینکی ثبت نشده است.</p>
+                <p class="links__empty"><i class="fa-regular fa-circle-plus" aria-hidden="true"></i> هنوز لینکی ثبت نشده است.</p>
             <?php else: ?>
                 <?php foreach ($links as $link): ?>
                     <?php
                     $url = $link['url'];
                     $relParts = ['noopener'];
-                    if (($link['link_type'] ?? 'follow') === 'nofollow') {
+                    $badgeText = 'دوفالو';
+                    $linkType = $link['link_type'] ?? 'follow';
+
+                    if ($linkType === 'nofollow') {
                         $relParts[] = 'nofollow';
-                    } elseif (($link['link_type'] ?? 'follow') === '301') {
+                        $badgeText = 'نوفالو';
+                    } elseif ($linkType === '301') {
                         $url = 'redirect.php?id=' . urlencode($link['id']);
+                        $badgeText = 'ریدایرکت 301';
                     }
+
                     $relAttribute = 'rel="' . implode(' ', $relParts) . '"';
                     ?>
                     <a class="links__item" href="<?= htmlspecialchars($url, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" <?= $relAttribute; ?> style="--btn-color: <?= htmlspecialchars($link['color'] ?? '#4b5fff', ENT_QUOTES, 'UTF-8'); ?>">
                         <span class="links__icon"><i class="<?= htmlspecialchars($link['icon'] ?? 'fa-solid fa-link', ENT_QUOTES, 'UTF-8'); ?>" aria-hidden="true"></i></span>
-                        <span class="links__text"><?= htmlspecialchars($link['text'] ?? '', ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="links__content">
+                            <span class="links__text"><?= htmlspecialchars($link['text'] ?? '', ENT_QUOTES, 'UTF-8'); ?></span>
+                            <?php if (!empty($badgeText)): ?>
+                                <span class="links__badge"><?= htmlspecialchars($badgeText, ENT_QUOTES, 'UTF-8'); ?></span>
+                            <?php endif; ?>
+                        </span>
+                        <span class="links__arrow" aria-hidden="true"><i class="fa-solid fa-arrow-left"></i></span>
                     </a>
                 <?php endforeach; ?>
             <?php endif; ?>
         </section>
+        <footer class="page-footer">
+            <a class="page-footer__link" href="admin.php">ورود به پنل مدیریت</a>
+        </footer>
     </main>
 </body>
 </html>
